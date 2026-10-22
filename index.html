@@ -1,0 +1,292 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Post Studio</title>
+<style>
+:root{--bg:#f6f5f2;--card:#fff;--ink:#16181d;--mute:#6b7280;--line:#e5e3dd;--accent:#0a66c2;--accent-ink:#fff;--r:14px}
+@media (prefers-color-scheme:dark){:root{--bg:#121316;--card:#1b1d22;--ink:#f1f1ee;--mute:#9aa0aa;--line:#2b2e35;--accent:#4a9df0;--accent-ink:#0b1220}}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.5 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+main{max-width:760px;margin:0 auto;padding:24px 16px 80px}
+header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+h1{font-size:22px;margin:0;letter-spacing:-.01em}
+h2{font-size:18px;margin:0 0 4px}
+.sub{color:var(--mute);margin:0 0 16px;font-size:14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:var(--r);padding:20px;margin-bottom:16px}
+.steps{display:flex;gap:6px;margin-bottom:16px}
+.steps div{flex:1;height:4px;border-radius:2px;background:var(--line)}
+.steps div.on{background:var(--accent)}
+button{font:inherit;cursor:pointer;border-radius:10px;border:1px solid var(--line);background:var(--card);color:var(--ink);padding:10px 16px}
+button.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent);font-weight:600}
+button:disabled{opacity:.5;cursor:default}
+button.link{border:0;background:none;color:var(--mute);padding:6px 8px;font-size:14px}
+textarea,input[type=text],input[type=password]{width:100%;font:inherit;color:var(--ink);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:10px 12px}
+textarea{resize:vertical;min-height:70px}
+label{display:block;font-size:14px;font-weight:600;margin:12px 0 6px}
+.drop{border:2px dashed var(--line);border-radius:var(--r);padding:36px 16px;text-align:center;color:var(--mute);cursor:pointer}
+.drop.over{border-color:var(--accent);color:var(--ink)}
+.files{list-style:none;padding:0;margin:12px 0 0;font-size:14px}
+.files li{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--line)}
+.row{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-top:16px}
+.q{margin-bottom:18px}
+.q .why{color:var(--mute);font-size:13px;margin-top:-2px;margin-bottom:6px}
+.post{white-space:pre-wrap;min-height:260px;line-height:1.55}
+.err{color:#c0392b;font-size:14px;margin-top:10px}
+.spin{display:inline-block;width:14px;height:14px;border:2px solid currentColor;border-right-color:transparent;border-radius:50%;animation:s .7s linear infinite;vertical-align:-2px;margin-right:6px}
+@keyframes s{to{transform:rotate(360deg)}}
+canvas{width:100%;max-width:420px;border-radius:10px;border:1px solid var(--line);display:block}
+.swatches{display:flex;gap:8px;margin:12px 0}
+.sw{width:28px;height:28px;border-radius:50%;border:2px solid var(--line);padding:0}
+.sw.on{border-color:var(--ink)}
+.grid{display:grid;grid-template-columns:1fr;gap:16px}
+@media(min-width:700px){.grid{grid-template-columns:1fr 1fr}}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.chips button{font-size:13px;padding:5px 10px}
+dialog{border:1px solid var(--line);border-radius:var(--r);background:var(--card);color:var(--ink);max-width:520px;width:calc(100% - 32px)}
+dialog::backdrop{background:rgba(0,0,0,.4)}
+.hidden{display:none}
+</style>
+</head>
+<body>
+<main>
+<header>
+  <h1>Post Studio</h1>
+  <button class="link" id="openProfile">My voice</button>
+</header>
+<div class="steps"><div id="s1" class="on"></div><div id="s2"></div><div id="s3"></div></div>
+
+<!-- Step 1 -->
+<section id="step1" class="card">
+  <h2>1. Drop in your worksheet</h2>
+  <p class="sub">PDF, photo, Word doc or text. You can add a few from the same class.</p>
+  <div class="drop" id="drop">Drag files here or tap to choose</div>
+  <input type="file" id="file" multiple accept=".pdf,.png,.jpg,.jpeg,.webp,.docx,.txt,.md,image/*" hidden>
+  <ul class="files" id="fileList"></ul>
+  <div class="row"><button class="primary" id="go1" disabled>Read it and ask me questions</button></div>
+  <div class="err" id="err1"></div>
+</section>
+
+<!-- Step 2 -->
+<section id="step2" class="card hidden">
+  <h2>2. What do you actually think?</h2>
+  <p class="sub" id="topic"></p>
+  <div id="qs"></div>
+  <p class="sub">Rough answers are fine. Skip any you don't care about. The post uses your words.</p>
+  <div class="row">
+    <button class="primary" id="go2">Write my post</button>
+    <button class="link" id="back1">Start over</button>
+  </div>
+  <div class="err" id="err2"></div>
+</section>
+
+<!-- Step 3 -->
+<section id="step3" class="hidden">
+  <div class="card">
+    <h2>3. Your post</h2>
+    <p class="sub">Edit it directly. It's yours.</p>
+    <textarea id="post" class="post" rows="14"></textarea>
+    <div class="row">
+      <button id="copy">Copy post</button>
+      <span class="sub" id="count" style="margin:0"></span>
+    </div>
+    <label for="fb">Not quite right? Tell it what to change</label>
+    <input type="text" id="fb" placeholder="e.g. shorter, more blunt, less formal, mention the group project">
+    <div class="chips" id="chips"></div>
+    <div class="row"><button id="redo">Rewrite</button></div>
+    <div class="err" id="err3"></div>
+  </div>
+
+  <div class="card">
+    <h2>Visual</h2>
+    <p class="sub">Made from the main idea in your post. Edit the text, change the colours, download.</p>
+    <div class="grid">
+      <canvas id="cv" width="1080" height="1350"></canvas>
+      <div>
+        <label>Headline</label><input type="text" id="vHead">
+        <label>Label</label><input type="text" id="vKick">
+        <label>Big number (optional)</label><input type="text" id="vBig">
+        <label>Points (one per line)</label><textarea id="vItems" rows="4"></textarea>
+        <div class="swatches" id="sws"></div>
+        <div class="row">
+          <button class="primary" id="dl">Download PNG</button>
+          <button id="newVis">New idea</button>
+        </div>
+        <div class="err" id="err4"></div>
+      </div>
+    </div>
+  </div>
+  <div class="row"><button class="link" id="back2">Start over</button></div>
+</section>
+</main>
+
+<dialog id="profile">
+  <h2>My voice</h2>
+  <p class="sub">Saved on this device only. No posts yet? No problem. Describe how you talk, and paste any message, essay paragraph or text you wrote that sounds like you. That is enough to start.</p>
+  <label>Name (shows on the visual)</label><input type="text" id="pName">
+  <label>What I study / where I want to go</label><textarea id="pAbout" placeholder="e.g. 2nd year law, interested in commercial / criminal / human rights, hoping for a vacation scheme"></textarea>
+  <label>How I talk</label><textarea id="pVoice" placeholder="e.g. dry humour, direct, say 'honestly' a lot, hate stuffy legal writing"></textarea>
+  <label>Paste something I've written (an essay paragraph, a message, anything)</label><textarea id="pSample" rows="5"></textarea>
+  <label>Access code (only if the site asks for one)</label><input type="password" id="pCode">
+  <div class="row"><button class="primary" id="saveProfile">Save</button><button class="link" id="closeProfile">Cancel</button></div>
+</dialog>
+
+<script>
+const $ = (id) => document.getElementById(id);
+let files = [], questions = [], visual = null, theme = 0;
+
+// ---------- profile ----------
+const load = () => { try { return JSON.parse(localStorage.getItem('ps_profile') || '{}'); } catch { return {}; } };
+const profile = () => load();
+$('openProfile').onclick = () => {
+  const p = load();
+  $('pName').value = p.name || ''; $('pAbout').value = p.about || ''; $('pVoice').value = p.voice || '';
+  $('pSample').value = p.sample || ''; $('pCode').value = p.code || '';
+  $('profile').showModal();
+};
+$('closeProfile').onclick = () => $('profile').close();
+$('saveProfile').onclick = () => {
+  try { localStorage.setItem('ps_profile', JSON.stringify({ name: $('pName').value, about: $('pAbout').value, voice: $('pVoice').value, sample: $('pSample').value, code: $('pCode').value })); } catch {}
+  $('profile').close();
+};
+
+// ---------- helpers ----------
+function busy(btn, on, label) { btn.disabled = on; if (on) { btn.dataset.l = btn.textContent; btn.innerHTML = '<span class="spin"></span>' + label; } else btn.textContent = btn.dataset.l || btn.textContent; }
+async function api(path, body, isForm) {
+  const headers = {}; const code = profile().code; if (code) headers['x-access-code'] = code;
+  if (!isForm) headers['content-type'] = 'application/json';
+  const r = await fetch(path, { method: 'POST', headers, body: isForm ? body : JSON.stringify(body) });
+  const j = await r.json().catch(() => ({}));
+  if (!r.ok) { if (r.status === 401) $('openProfile').click(); throw new Error(j.error || 'Something went wrong.'); }
+  return j;
+}
+function form(extra = {}) {
+  const fd = new FormData(); files.forEach((f) => fd.append('files', f));
+  fd.append('profile', JSON.stringify(profile()));
+  Object.entries(extra).forEach(([k, v]) => fd.append(k, v)); return fd;
+}
+function show(n) {
+  ['step1', 'step2', 'step3'].forEach((id, i) => $(id).classList.toggle('hidden', i + 1 !== n));
+  ['s1', 's2', 's3'].forEach((id, i) => $(id).classList.toggle('on', i + 1 <= n));
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+const reset = () => { files = []; renderFiles(); show(1); };
+$('back1').onclick = $('back2').onclick = reset;
+
+// ---------- step 1 ----------
+function renderFiles() {
+  $('fileList').innerHTML = '';
+  files.forEach((f, i) => {
+    const li = document.createElement('li'); li.textContent = f.name;
+    const x = document.createElement('button'); x.className = 'link'; x.textContent = 'remove';
+    x.onclick = () => { files.splice(i, 1); renderFiles(); }; li.append(x); $('fileList').append(li);
+  });
+  $('go1').disabled = !files.length;
+}
+const addFiles = (list) => { files.push(...list); renderFiles(); };
+$('drop').onclick = () => $('file').click();
+$('file').onchange = (e) => { addFiles([...e.target.files]); e.target.value = ''; };
+$('drop').ondragover = (e) => { e.preventDefault(); $('drop').classList.add('over'); };
+$('drop').ondragleave = () => $('drop').classList.remove('over');
+$('drop').ondrop = (e) => { e.preventDefault(); $('drop').classList.remove('over'); addFiles([...e.dataTransfer.files]); };
+
+$('go1').onclick = async () => {
+  $('err1').textContent = ''; busy($('go1'), true, 'Reading your worksheet');
+  try {
+    const r = await api('/api/questions', form(), true);
+    questions = r.questions || [];
+    $('topic').textContent = r.topic ? `Worksheet: ${r.topic}` : '';
+    $('qs').innerHTML = '';
+    questions.forEach((q, i) => {
+      const d = document.createElement('div'); d.className = 'q';
+      d.innerHTML = `<label for="a${i}"></label>${q.why ? '<div class="why"></div>' : ''}<textarea id="a${i}"></textarea>`;
+      d.querySelector('label').textContent = q.q; if (q.why) d.querySelector('.why').textContent = q.why;
+      $('qs').append(d);
+    });
+    show(2);
+  } catch (e) { $('err1').textContent = e.message; } finally { busy($('go1'), false); $('go1').disabled = !files.length; }
+};
+
+// ---------- step 3 ----------
+const answers = () => questions.map((q, i) => ({ q: q.q, a: $('a' + i).value }));
+const CHIPS = ['Shorter', 'More casual', 'More blunt', 'Less polished', 'Stronger opening', 'Add a bit of doubt'];
+CHIPS.forEach((c) => { const b = document.createElement('button'); b.textContent = c; b.onclick = () => { $('fb').value = c; }; $('chips').append(b); });
+const updateCount = () => { $('count').textContent = `${$('post').value.length} characters`; };
+$('post').oninput = updateCount;
+
+async function writePost(feedback = '') {
+  const r = await api('/api/post', form({ answers: JSON.stringify(answers()), feedback, previous: $('post').value }), true);
+  $('post').value = r.post; updateCount();
+}
+$('go2').onclick = async () => {
+  $('err2').textContent = ''; busy($('go2'), true, 'Writing');
+  try { await writePost(); show(3); makeVisual(); } catch (e) { $('err2').textContent = e.message; } finally { busy($('go2'), false); }
+};
+$('redo').onclick = async () => {
+  $('err3').textContent = ''; busy($('redo'), true, 'Rewriting');
+  try { await writePost($('fb').value); $('fb').value = ''; } catch (e) { $('err3').textContent = e.message; } finally { busy($('redo'), false); }
+};
+$('copy').onclick = async () => { try { await navigator.clipboard.writeText($('post').value); $('copy').textContent = 'Copied'; setTimeout(() => $('copy').textContent = 'Copy post', 1500); } catch { $('post').select(); } };
+
+// ---------- visual ----------
+const THEMES = [
+  { name: 'Ink', bg: '#0f1115', fg: '#f4f1ea', accent: '#4ad0b8', mute: '#8b919c' },
+  { name: 'Paper', bg: '#f4f1ea', fg: '#16181d', accent: '#d9482b', mute: '#6b6a64' },
+  { name: 'LinkedIn', bg: '#0a66c2', fg: '#ffffff', accent: '#ffd166', mute: '#cfe3f7' },
+  { name: 'Forest', bg: '#14302a', fg: '#f1efe4', accent: '#e8b84a', mute: '#9fb8ae' },
+];
+THEMES.forEach((t, i) => { const b = document.createElement('button'); b.className = 'sw' + (i ? '' : ' on'); b.title = t.name; b.style.background = t.bg; b.style.boxShadow = `inset -10px 0 0 ${t.accent}`; b.onclick = () => { theme = i; document.querySelectorAll('.sw').forEach((s, j) => s.classList.toggle('on', j === i)); draw(); }; $('sws').append(b); });
+
+async function makeVisual() {
+  $('err4').textContent = ''; busy($('newVis'), true, 'Designing');
+  try {
+    visual = await api('/api/visual', { post: $('post').value, profile: profile() });
+    $('vHead').value = visual.headline || ''; $('vKick').value = visual.kicker || ''; $('vBig').value = visual.big || '';
+    $('vItems').value = (visual.items || []).join('\n'); draw();
+  } catch (e) { $('err4').textContent = e.message; } finally { busy($('newVis'), false); }
+}
+$('newVis').onclick = makeVisual;
+['vHead', 'vKick', 'vBig', 'vItems'].forEach((id) => $(id).addEventListener('input', draw));
+
+function wrap(ctx, text, maxW) {
+  const words = text.split(/\s+/), lines = []; let cur = '';
+  for (const w of words) { const t = cur ? cur + ' ' + w : w; if (ctx.measureText(t).width > maxW && cur) { lines.push(cur); cur = w; } else cur = t; }
+  if (cur) lines.push(cur); return lines;
+}
+function draw() {
+  if (!visual) return;
+  const t = THEMES[theme], c = $('cv'), ctx = c.getContext('2d'), W = 1080, H = 1350, P = 96;
+  const F = 'system-ui,-apple-system,"Segoe UI",Roboto,Helvetica,Arial,sans-serif';
+  const items = $('vItems').value.split('\n').map((s) => s.trim()).filter(Boolean);
+  const big = $('vBig').value.trim(), layout = visual.layout;
+  ctx.fillStyle = t.bg; ctx.fillRect(0, 0, W, H);
+  ctx.fillStyle = t.accent; ctx.fillRect(P, P, 72, 10);
+  ctx.textBaseline = 'alphabetic';
+  ctx.fillStyle = t.accent; ctx.font = `700 34px ${F}`;
+  ctx.fillText($('vKick').value.toUpperCase().split('').join(String.fromCharCode(8202)), P, P + 70);
+  let y = P + 190;
+  if (big && layout === 'stat') {
+    let fs = 400; ctx.font = `800 ${fs}px ${F}`;
+    while (ctx.measureText(big).width > W - 2 * P && fs > 120) { fs -= 10; ctx.font = `800 ${fs}px ${F}`; }
+    ctx.fillStyle = t.accent; ctx.fillText(big, P - 8, y + fs * 0.8); y += fs * 0.8 + 80;
+  }
+  const hs = layout === 'stat' && big ? 62 : 88;
+  ctx.fillStyle = t.fg; ctx.font = `800 ${hs}px ${F}`;
+  wrap(ctx, $('vHead').value, W - 2 * P).forEach((l) => { ctx.fillText(l, P, y); y += hs * 1.15; });
+  y += 50; ctx.font = `500 44px ${F}`;
+  items.forEach((it, i) => {
+    if (layout === 'steps') { ctx.fillStyle = t.accent; ctx.font = `800 44px ${F}`; ctx.fillText(String(i + 1).padStart(2, '0'), P, y); }
+    else if (layout === 'compare') { ctx.fillStyle = i ? t.accent : t.mute; ctx.fillRect(P, y - 34, 8, 44); }
+    ctx.fillStyle = layout === 'compare' && !i ? t.mute : t.fg; ctx.font = `500 44px ${F}`;
+    const x = layout === 'steps' ? P + 90 : layout === 'compare' ? P + 32 : P;
+    wrap(ctx, it, W - P - x).forEach((l) => { ctx.fillText(l, x, y); y += 58; });
+    y += 28;
+  });
+  const foot = (visual.footer || profile().name || '');
+  if (foot) { ctx.fillStyle = t.mute; ctx.font = `600 34px ${F}`; ctx.fillText(foot, P, H - P); }
+}
+$('dl').onclick = () => { const a = document.createElement('a'); a.download = 'linkedin-visual.png'; a.href = $('cv').toDataURL('image/png'); a.click(); };
+</script>
+</body>
+</html>
